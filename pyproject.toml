@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "emporio-agent"
+version = "0.1.0"
+description = "Agente de atendimento por texto da Empório da Música"
+requires-python = ">=3.11"
+dependencies = [
+    "langgraph>=1.0",
+    "langgraph-checkpoint-sqlite>=3.0",
+    "langchain-core>=1.0",
+    "langchain-groq>=1.0",
+    "langchain-ollama>=1.0",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "pypdfium2>=4.30",
+    "rank-bm25>=0.2.2",
+    "rapidfuzz>=3.9",
+    "rich>=13.7",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+web = ["streamlit>=1.38"]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[project.scripts]
+emporio = "emporio.interfaces.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
