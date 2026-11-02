@@ -224,7 +224,7 @@ O ETL carrega os CSVs num SQLite com chaves e tipos, normaliza e-mail e telefone
 
 Preferi verificações determinísticas a um LLM avaliador porque são baratas, reproduzíveis e fáceis de auditar. Falhas por limite do provedor são contadas à parte, para não serem confundidas com erros de comportamento.
 
-A primeira execução passou em 22 de 27 casos. As falhas foram de três tipos, e cada um teve um tratamento diferente: comportamento do modelo que dava para garantir em código (os resumos, o formato monetário e as datas), bugs no próprio verificador (espaços invisíveis que o modelo usa entre o número e o "%") e expectativas rígidas demais, que exigiam um caminho quando havia mais de um correto. O resultado da última execução, com os dois conjuntos separados, está em [evals/REPORT.md](evals/REPORT.md). As conversas de exemplo estão em [examples/](examples/).
+A primeira execução passou em 22 de 27 casos. As falhas foram de três tipos, e cada um teve um tratamento diferente: comportamento do modelo que dava para garantir em código (os resumos, o formato monetário e as datas), bugs no próprio verificador (espaços invisíveis que o modelo usa entre o número e o "%") e expectativas rígidas demais, que exigiam um caminho quando havia mais de um correto. O resultado da última execução, com os dois conjuntos separados, está em [evals/REPORT.md](evals/REPORT.md). Na última execução, com `openai/gpt-oss-120b`, foram aprovados 24 de 27 casos de ajuste e 4 de 5 de validação. As conversas de exemplo estão em [examples/](examples/).
 
 ## Estrutura do repositório
 
