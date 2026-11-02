@@ -151,12 +151,17 @@ def _regret_or_preference(
         return {"resultado": NEEDS_INFO, "falta_confirmar": missing}
 
     days_since_received = (today - received_date).days
-    condicoes = _REGRET_CONDITIONS if reason == "arrependimento" else _PREFERENCE_CONDITIONS
+    if reason == "arrependimento":
+        deadline = REGRET_DAYS
+        condicoes = _REGRET_CONDITIONS
+    else:
+        deadline = PREFERENCE_DAYS
+        condicoes = _PREFERENCE_CONDITIONS
 
-    if days_since_received <= REGRET_DAYS:
+    if days_since_received <= deadline:
         return {
             "resultado": ELIGIBLE,
-            "prazo_dias": REGRET_DAYS,
+            "prazo_dias": deadline,
             "dias_desde_recebimento": days_since_received,
             "condicoes": list(condicoes),
         }
@@ -164,10 +169,10 @@ def _regret_or_preference(
     return {
         "resultado": NOT_ELIGIBLE,
         "motivo": (
-            f"Fora do prazo de {REGRET_DAYS} dias após o recebimento "
+            f"Fora do prazo de {deadline} dias após o recebimento "
             f"({days_since_received} dias já se passaram)."
         ),
-        "prazo_dias": REGRET_DAYS,
+        "prazo_dias": deadline,
         "dias_desde_recebimento": days_since_received,
     }
 

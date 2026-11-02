@@ -132,6 +132,21 @@ def test_defect_manufacturer_warranty():
     assert result["caminho"] == "garantia_fabricante"
 
 
+def test_preference_uses_its_own_deadline(monkeypatch):
+    monkeypatch.setattr(returns, "PREFERENCE_DAYS", 15)
+    received = date(2026, 2, 14)
+    today = received + timedelta(days=10)  # 10 dias desde o recebimento
+
+    pref = evaluate("preferencia", "delivered", ORDER_DATE, today,
+                    received_date=received, special_item=False)
+    assert pref["resultado"] == returns.ELIGIBLE
+    assert pref["prazo_dias"] == 15
+
+    regret = evaluate("arrependimento", "delivered", ORDER_DATE, today,
+                      received_date=received, online_purchase=True, special_item=False)
+    assert regret["resultado"] == returns.NOT_ELIGIBLE
+
+
 @pytest.mark.parametrize("reason", ["arrependimento", "preferencia"])
 @pytest.mark.parametrize("online", [True, False, None])
 @pytest.mark.parametrize("special", [True, False, None])
