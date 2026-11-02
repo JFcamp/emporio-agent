@@ -125,6 +125,14 @@ class ToolCall:
 class Reply:
     text: str
     tool_calls: list[ToolCall]
+    error: str | None = None
+
+
+def classify_error(exc: Exception) -> str:
+    text = str(exc).lower()
+    if "ratelimit" in type(exc).__name__.lower() or "429" in text or "rate_limit" in text:
+        return "rate_limit"
+    return "provider"
 
 
 def format_currency(text: str) -> str:
@@ -153,6 +161,7 @@ def _text_from(message: AIMessage) -> str:
 class EmporioAgent:
     def __init__(self, llm: BaseChatModel | None = None, persist: bool = True):
         self._llm = llm or build_llm()
+        self.last_error_message: str | None = None
         if persist:
             settings = get_settings()
             settings.checkpoints_db.parent.mkdir(parents=True, exist_ok=True)
@@ -183,9 +192,10 @@ class EmporioAgent:
             result = self._graph.invoke({"messages": [("user", message)]}, config)
             new_messages = result["messages"][previous:]
             return _build_reply(new_messages)
-        except Exception:
+        except Exception as exc:
             logger.exception("Falha ao processar mensagem na thread %s", thread_id)
-            return Reply(FALLBACK, [])
+            self.last_error_message = str(exc)
+            return Reply(FALLBACK, [], error=classify_error(exc))
 
 
 def _build_reply(new_messages: list[BaseMessage]) -> Reply:
