@@ -37,6 +37,27 @@ def test_simulate_hypothetical_amount():
     assert result["pix"]["total"] is None
 
 
+def test_resumo_item_promocao():
+    result = simulate_payment(items=[{"produto_id": 121, "quantidade": 1}])
+    assert "R$ 439,20" in result["resumo"]
+    assert "sem desconto extra" in result["resumo"]
+
+
+def test_resumo_itens_mistos():
+    result = simulate_payment(
+        items=[
+            {"produto_id": 121, "quantidade": 1},
+            {"produto_id": 81, "quantidade": 2},
+        ]
+    )
+    assert "R$ 1.579,01" in result["resumo"]
+
+
+def test_resumo_valor_avulso():
+    result = simulate_payment(amount=439.2)
+    assert "O PIX depende" in result["resumo"]
+
+
 def test_simulate_installments_not_allowed():
     result = simulate_payment(items=[{"produto_id": 81, "quantidade": 1}], installments=10)
     assert result["parcelamento_pedido"]["permitido"] is False

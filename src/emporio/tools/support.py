@@ -82,7 +82,29 @@ def _simulate_by_items(items: list[dict]) -> dict | tuple[dict, int]:
         result: dict = {"itens": linhas, **options}
         if avisos:
             result["avisos"] = avisos
+        result["resumo"] = _resumo_itens(options, total_cents, pix_eligible_cents)
         return result, total_cents
+
+
+def _pix_suffix(total_cents: int, pix_eligible_cents: int) -> str:
+    if pix_eligible_cents == 0:
+        return " (sem desconto extra: o produto já está em promoção)"
+    if pix_eligible_cents >= total_cents:
+        return " (5% de desconto)"
+    return " (5% de desconto só nos itens sem promoção)"
+
+
+def _resumo_itens(options: dict, total_cents: int, pix_eligible_cents: int) -> str:
+    credito = options["credito"]
+    frase = (
+        f"Total: {options['valor_base']}. "
+        f"PIX: {options['pix']['total']}{_pix_suffix(total_cents, pix_eligible_cents)}. "
+        f"Crédito: até {credito['max_parcelas_sem_juros']}x sem juros de {credito['valor_parcela']}"
+    )
+    if "ultima_parcela" in credito:
+        frase += f", última parcela {credito['ultima_parcela']}"
+    frase += "."
+    return frase
 
 
 def simulate_payment(
@@ -97,12 +119,23 @@ def simulate_payment(
         result, total_cents = simulated
     elif amount is not None and amount > 0:
         total_cents = to_cents(amount)
-        result = {"simulacao_hipotetica": True, **payment_options(total_cents, None)}
+        options = payment_options(total_cents, None)
+        credito = options["credito"]
+        result = {"simulacao_hipotetica": True, **options}
+        result["resumo"] = (
+            f"Valor informado: {options['valor_base']}. "
+            f"Crédito: até {credito['max_parcelas_sem_juros']}x sem juros de "
+            f"{credito['valor_parcela']}. O PIX depende dos produtos escolhidos."
+        )
     else:
         return {"erro": "Informe os produtos (id e quantidade) ou um valor positivo."}
 
     if installments is not None:
-        result["parcelamento_pedido"] = check_installments(total_cents, installments)
+        pedido = check_installments(total_cents, installments)
+        result["parcelamento_pedido"] = pedido
+        if not pedido["permitido"] and "resumo" in result:
+            result["resumo"] += f" Em {installments}x não dá: {pedido['motivo']}"
+
     return result
 
 

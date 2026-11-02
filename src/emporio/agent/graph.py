@@ -135,10 +135,29 @@ def classify_error(exc: Exception) -> str:
     return "provider"
 
 
+_SPECIAL_SPACES = dict.fromkeys(map(ord, "\u00a0\u202f\u2009"), " ")
+# "R$" + separador opcional + número no formato brasileiro (milhar com ponto,
+# decimais com vírgula). Captura o grupo numérico para normalizar.
+_CURRENCY_RE = re.compile(r"R\$\s*(\d[\d.]*(?:,\d+)?)")
+
+
+def _format_amount(raw: str) -> str:
+    # raw vem como escrito ("1.000", "1000", "2.199", "5,5", "1.234,56").
+    if "," in raw:
+        inteiro, _, decimal = raw.partition(",")
+    else:
+        inteiro, decimal = raw, ""
+    digits = inteiro.replace(".", "") or "0"
+    cents = (decimal + "00")[:2]
+    grouped = f"{int(digits):,}".replace(",", ".")
+    return f"R$ {grouped},{cents}"
+
+
 def format_currency(text: str) -> str:
-    # Garante um único espaço entre "R$" e o número (o modelo às vezes cola ou
-    # usa espaço especial). Não altera o valor em si.
-    return re.sub(r"R\$\s*(\d)", r"R$ \1", text)
+    # Normaliza todo "R$<numero>" para o padrão brasileiro "R$ 1.234,56"
+    # (milhar com ponto, sempre 2 casas). Também troca espaços especiais.
+    text = text.translate(_SPECIAL_SPACES)
+    return _CURRENCY_RE.sub(lambda m: _format_amount(m.group(1)), text)
 
 
 def clean_text(text: str) -> str:

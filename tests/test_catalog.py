@@ -1,6 +1,13 @@
 from emporio.tools import catalog
 
 
+def test_search_resumo_mentions_total_and_shown():
+    result = catalog.search_products(category="violão", max_price=1000)
+    resumo = result["resumo"]
+    assert "12" in resumo
+    assert "Mostrando as 8" in resumo
+
+
 def test_search_by_category_and_max_price():
     result = catalog.search_products(category="violão", max_price=1000)
     assert result["filtros"]["categoria"] == "Violões"

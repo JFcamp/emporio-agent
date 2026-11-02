@@ -194,7 +194,37 @@ def search_products(
             else:
                 result["observacao"] = "Nenhum produto encontrado com esses filtros."
 
+        result["resumo"] = _search_resumo(
+            total, limit, category_name, max_price, min_price, result.get("observacao")
+        )
         return result
+
+
+def _search_resumo(
+    total: int,
+    limit: int,
+    category_name: str | None,
+    max_price: float | None,
+    min_price: float | None,
+    observacao: str | None,
+) -> str:
+    if total == 0:
+        return observacao or "Nenhum produto encontrado com esses filtros."
+
+    onde = f"em {category_name}" if category_name else "no catálogo"
+    plural = "opção" if total == 1 else "opções"
+    frase = f"Encontrei {total} {plural} {onde}"
+    if max_price is not None:
+        frase += f" até {brl(max_price)}"
+    if min_price is not None:
+        frase += f" a partir de {brl(min_price)}"
+    frase += "."
+    if total > limit:
+        frase += (
+            f" Mostrando as {limit} de menor preço; posso filtrar por faixa de "
+            "preço, tipo de corda ou marca."
+        )
+    return frase
 
 
 def _row_by_id(conn: sqlite3.Connection, product_id: int) -> sqlite3.Row | None:

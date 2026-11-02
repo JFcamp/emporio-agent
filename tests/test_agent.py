@@ -147,8 +147,12 @@ def test_format_currency():
     from emporio.agent.graph import format_currency
 
     assert format_currency("R$429,90") == "R$ 429,90"
-    assert format_currency("R$  1.000,00") == "R$ 1.000,00"
+    assert format_currency("R$\u202f1.000") == "R$ 1.000,00"
+    assert format_currency("R$ 1000") == "R$ 1.000,00"
+    assert format_currency("R$ 2.199") == "R$ 2.199,00"
+    assert format_currency("R$ 5,5") == "R$ 5,50"
     assert format_currency("R$ 549,00") == "R$ 549,00"
+    assert format_currency("R$ 1.234,56") == "R$ 1.234,56"
     assert format_currency("sem dinheiro aqui") == "sem dinheiro aqui"
 
 
