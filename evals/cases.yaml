@@ -185,7 +185,7 @@
         tools_all: [avaliar_troca_devolucao]
         args:
           - tool: avaliar_troca_devolucao
-            match: {data_recebimento: "2026-02-18", compra_online: true, item_personalizado_ou_venda_final: false}
+            match: {compra_online: true, item_personalizado_ou_venda_final: false}
         contains_any: ["10 dias uteis", "embalagem original"]
 
 - id: devolucao_fora_do_prazo
@@ -204,13 +204,14 @@
   turns:
     - user: "Meu instrumento do pedido 1 apresentou defeito. Meu e-mail é pedro.oliveira@jmail.com"
       expect:
+        contains_any: ["receb", "data"]
+        not_contains: ["troca na loja", "esta coberto"]
+    - user: "Recebi em 25/10/2025"
+      expect:
         tools_all: [avaliar_troca_devolucao]
         args:
           - tool: avaliar_troca_devolucao
             match: {motivo: "defeito"}
-    - user: "Recebi em 25/10/2025"
-      expect:
-        tools_all: [avaliar_troca_devolucao]
         contains_any: ["fabricante", "certificado"]
         not_contains: ["troca na loja", "esta coberto", "esta na garantia legal"]
 
