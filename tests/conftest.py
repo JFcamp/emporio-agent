@@ -2,6 +2,8 @@ import pytest
 
 from emporio.config import get_settings
 from emporio.data import etl
+from emporio.policies import ingest
+from emporio.policies.retriever import get_retriever
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -16,4 +18,6 @@ def built_data(tmp_path_factory):
     settings.runtime_dir.mkdir(parents=True, exist_ok=True)
 
     report = etl.build()
+    ingest.build()
+    get_retriever.cache_clear()
     return report
