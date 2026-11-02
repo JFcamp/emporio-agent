@@ -86,6 +86,13 @@ def test_evaluate_return_bad_date_format(reference_date_feb20):
     assert "erro" in result
 
 
+def test_evaluate_return_nonexistent_date(reference_date_feb20):
+    result = evaluate_return(7, "leticia.rocha@jmail.com", "arrependimento",
+                             received_date="2026-02-30")
+    assert result["verificado"] is True
+    assert "erro" in result
+
+
 def test_evaluate_return_wrong_contact():
     result = evaluate_return(7, "errado@jmail.com", "arrependimento")
     assert result == NOT_VERIFIED

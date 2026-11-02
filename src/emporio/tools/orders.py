@@ -146,12 +146,20 @@ def evaluate_return(
 
         parsed_received: date | None = None
         if received_date is not None:
+            # A regex garante o formato; fromisoformat ainda rejeita datas
+            # inexistentes (ex.: 2026-02-30), que não podem quebrar a ferramenta.
             if not _DATE_RE.match(received_date):
                 return {
                     "verificado": True,
                     "erro": "data_recebimento deve estar no formato AAAA-MM-DD.",
                 }
-            parsed_received = date.fromisoformat(received_date)
+            try:
+                parsed_received = date.fromisoformat(received_date)
+            except ValueError:
+                return {
+                    "verificado": True,
+                    "erro": "data_recebimento deve estar no formato AAAA-MM-DD.",
+                }
 
         settings = get_settings()
         today = settings.today()
