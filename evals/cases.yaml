@@ -261,3 +261,59 @@
           - tool: simular_pagamento
             match: {itens: [{produto_id: 95}]}
         contains_any: ["12x", "12 vezes", "doze"]
+
+- id: holdout_pix_quantidade
+  descricao: PIX de item em promoção com quantidade 2 (sem desconto PIX).
+  holdout: true
+  turns:
+    - user: "Quero 2 ukuleles Ohana CK-20. Quanto fica no PIX?"
+      expect:
+        tools_all: [simular_pagamento]
+        args:
+          - tool: simular_pagamento
+            match: {itens: [{produto_id: 121, quantidade: 2}]}
+        contains_all: ["878,40"]
+        not_contains: ["834,48"]
+
+- id: holdout_parcelamento_f310
+  descricao: Maior parcelamento sem juros para o Yamaha F310.
+  holdout: true
+  turns:
+    - user: "Qual o maior parcelamento sem juros para o Yamaha F310?"
+      expect:
+        tools_all: [simular_pagamento]
+        contains_any: ["6x", "6 vezes", "seis vezes"]
+
+- id: holdout_arrependimento_loja_fisica
+  descricao: Arrependimento não vale para compra na loja física.
+  holdout: true
+  turns:
+    - user: "Me arrependi da compra do pedido 7, comprei na loja física. Meu e-mail é leticia.rocha@jmail.com"
+      expect:
+        tools_all: [avaliar_troca_devolucao]
+        args:
+          - tool: avaliar_troca_devolucao
+            match: {compra_online: false}
+        not_contains: ["10 dias uteis"]
+        contains_any: ["online", "loja fisica", "preferencia"]
+
+- id: holdout_preferencia_sem_info
+  descricao: Troca por preferência ainda precisa saber se é item especial.
+  holdout: true
+  turns:
+    - user: "Quero trocar o produto do pedido 7 por outra cor, recebi em 16 de fevereiro. E-mail leticia.rocha@jmail.com"
+      expect:
+        tools_all: [avaliar_troca_devolucao]
+        args:
+          - tool: avaliar_troca_devolucao
+            match: {motivo: "preferencia"}
+        contains_any: ["personaliz", "venda final", "sob encomenda"]
+
+- id: holdout_guitarra_promocao
+  descricao: Guitarra em promoção sem preços zerados.
+  holdout: true
+  turns:
+    - user: "Tem guitarra em promoção?"
+      expect:
+        tools_any: [listar_promocoes, buscar_produtos]
+        not_contains: ["r$ 0,00"]

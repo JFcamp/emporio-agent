@@ -95,6 +95,7 @@ def run_case(case: dict, settings, log_path: Path, sleep: float) -> dict:
         "id": case["id"],
         "descricao": case.get("descricao", ""),
         "reference_date": reference,
+        "holdout": bool(case.get("holdout", False)),
         "status": status,
         "turns": turns_result,
     }
@@ -113,12 +114,33 @@ def _failures_summary(turns: list[dict]) -> str:
     return "; ".join(flat) if flat else "—"
 
 
+def _block(title: str, rows: list[dict], conjunto: str) -> list[str]:
+    passed = sum(1 for r in rows if r["status"] == "PASS")
+    lines = [
+        f"## {title} ({passed}/{len(rows)} aprovados)",
+        "",
+        "| Caso | Conjunto | Resultado | Falhas | Ferramentas por turno | Tempo (s) |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+    for r in rows:
+        seconds = round(sum(t["seconds"] for t in r["turns"]), 2)
+        lines.append(
+            f"| {r['id']} | {conjunto} | {r['status']} | {_failures_summary(r['turns'])} | "
+            f"{_tools_summary(r['turns'])} | {seconds} |"
+        )
+    lines.append("")
+    return lines
+
+
 def _render_markdown(results: list[dict], model: str) -> str:
     total = len(results)
     passed = sum(1 for r in results if r["status"] == "PASS")
     behavior = sum(1 for r in results if r["status"] == "FAIL")
     infra = sum(1 for r in results if r["status"] == "INFRA")
     now = datetime.now(STORE_TZ).strftime("%d/%m/%Y %H:%M")
+
+    tuning = [r for r in results if not r["holdout"]]
+    holdout = [r for r in results if r["holdout"]]
 
     lines = [
         "# Avaliação do agente",
@@ -130,15 +152,10 @@ def _render_markdown(results: list[dict], model: str) -> str:
         f"- Falhas de comportamento: {behavior}",
         f"- Falhas de infra (provedor): {infra}",
         "",
-        "| Caso | Resultado | Falhas | Ferramentas por turno | Tempo (s) |",
-        "| --- | --- | --- | --- | --- |",
     ]
-    for r in results:
-        seconds = round(sum(t["seconds"] for t in r["turns"]), 2)
-        lines.append(
-            f"| {r['id']} | {r['status']} | {_failures_summary(r['turns'])} | "
-            f"{_tools_summary(r['turns'])} | {seconds} |"
-        )
+    lines += _block("Casos de ajuste", tuning, "ajuste")
+    if holdout:
+        lines += _block("Casos de validação (holdout)", holdout, "holdout")
     return "\n".join(lines) + "\n"
 
 

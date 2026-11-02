@@ -21,6 +21,8 @@ VALID_EXPECT_KEYS = {
 
 TOOL_NAMES = {t.name for t in ALL_TOOLS}
 
+VALID_CASE_KEYS = {"id", "descricao", "reference_date", "holdout", "turns"}
+
 
 def _cases():
     return yaml.safe_load(CASES_PATH.read_text(encoding="utf-8"))
@@ -28,7 +30,7 @@ def _cases():
 
 def test_yaml_loads():
     assert isinstance(_cases(), list)
-    assert len(_cases()) == 27
+    assert len(_cases()) == 32
 
 
 def test_unique_ids_and_turns():
@@ -37,6 +39,14 @@ def test_unique_ids_and_turns():
     assert len(ids) == len(set(ids))
     for case in cases:
         assert case.get("turns"), f"caso {case['id']} sem turnos"
+        unknown = set(case) - VALID_CASE_KEYS
+        assert not unknown, f"{case['id']}: chaves de caso desconhecidas {unknown}"
+
+
+def test_holdout_flag_is_bool():
+    for case in _cases():
+        if "holdout" in case:
+            assert isinstance(case["holdout"], bool)
 
 
 def test_expect_keys_are_known():
