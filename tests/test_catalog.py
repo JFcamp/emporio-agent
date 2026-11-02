@@ -37,6 +37,18 @@ def test_search_unknown_category():
     assert len(result["categorias"]) == 9
 
 
+def test_category_with_products_but_filter_empty():
+    result = catalog.search_products(category="violão", max_price=100)
+    assert result["total_encontrado"] == 0
+    assert result["observacao"] == "Nenhum produto encontrado com esses filtros."
+    assert "não há nenhum item" not in result["observacao"]
+
+
+def test_no_aviso_busca_when_nothing_matches():
+    result = catalog.search_products("zzzz yyyy")
+    assert "aviso_busca" not in result
+
+
 def test_only_available_filter():
     incluido = catalog.search_products(only_available=False, limit=100)
     ids_incluidos = {p["id"] for p in incluido["produtos"]}

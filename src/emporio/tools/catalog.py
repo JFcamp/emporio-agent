@@ -107,6 +107,14 @@ def _category_names(conn: sqlite3.Connection) -> list[str]:
     return [row["name"] for row in conn.execute("SELECT name FROM categories ORDER BY category_id")]
 
 
+def _category_is_empty(conn: sqlite3.Connection, category_id: int) -> bool:
+    # Categoria sem NENHUM produto cadastrado (independe de filtros da busca).
+    row = conn.execute(
+        "SELECT COUNT(*) AS total FROM products WHERE category_id = ?", (category_id,)
+    ).fetchone()
+    return row["total"] == 0
+
+
 def search_products(
     term: str | None = None,
     category: str | None = None,
@@ -117,6 +125,7 @@ def search_products(
 ) -> dict:
     with connect() as conn:
         category_name: str | None = None
+        category_id: int | None = None
         if category is not None:
             resolved = resolve_category(conn, category)
             if resolved is None:
@@ -124,7 +133,7 @@ def search_products(
                     "erro": f"Categoria '{category}' não encontrada.",
                     "categorias": _category_names(conn),
                 }
-            _, category_name = resolved
+            category_id, category_name = resolved
 
         clauses: list[str] = []
         params: list = []
@@ -162,9 +171,10 @@ def search_products(
                 rows = exact
             else:
                 rows = [row for row, score in scored if score >= 0.5]
-                aviso_busca = (
-                    "Nenhum produto bate com todos os termos; estes são aproximados."
-                )
+                if rows:
+                    aviso_busca = (
+                        "Nenhum produto bate com todos os termos; estes são aproximados."
+                    )
 
         total = len(rows)
         result: dict = {
@@ -176,10 +186,14 @@ def search_products(
             result["aviso_busca"] = aviso_busca
         if total > limit:
             result["observacao"] = f"Mostrando {limit} de {total}. Refine a busca se precisar."
-        if category_name is not None and total == 0 and term is None:
-            result["observacao"] = (
-                f"No momento não há nenhum item de {category_name} no catálogo."
-            )
+        elif total == 0:
+            if category_id is not None and _category_is_empty(conn, category_id):
+                result["observacao"] = (
+                    f"No momento não há nenhum item de {category_name} no catálogo."
+                )
+            else:
+                result["observacao"] = "Nenhum produto encontrado com esses filtros."
+
         return result
 
 
