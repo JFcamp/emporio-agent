@@ -70,7 +70,6 @@ SYNONYMS = {
     "dados": "privacidade lgpd dados",
     "pessoais": "privacidade lgpd dados",
     "privacidade": "privacidade lgpd dados",
-    "seguros": "privacidade lgpd dados",
     "acessorio": "acessorios cordas palhetas cabos",
     "acessorios": "acessorios cordas palhetas cabos",
     "corda": "acessorios cordas",
@@ -79,7 +78,6 @@ SYNONYMS = {
     "palhetas": "acessorios cordas palhetas",
     "amplificador": "acessorios amplificadores",
     "amplificadores": "acessorios amplificadores",
-    "vendem": "acessorios comercializamos",
 }
 
 
