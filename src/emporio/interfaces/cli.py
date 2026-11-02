@@ -5,7 +5,6 @@ terminal e renderização. A lógica do atendimento vive no agente.
 """
 
 import argparse
-import logging
 
 from rich.console import Console
 from rich.markdown import Markdown
@@ -14,24 +13,12 @@ from rich.panel import Panel
 from emporio.agent.graph import EmporioAgent
 from emporio.agent.llm import describe
 from emporio.bootstrap import ensure_data
-from emporio.config import get_settings
+from emporio.interfaces.common import setup_logging
 
 HELP = (
     "Comandos: /novo (nova conversa), /debug (liga/desliga ferramentas), "
     "/ajuda, /sair."
 )
-
-
-def setup_logging() -> None:
-    settings = get_settings()
-    settings.runtime_dir.mkdir(parents=True, exist_ok=True)
-    logging.basicConfig(
-        filename=settings.runtime_dir / "emporio.log",
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    )
-    for noisy in ("httpx", "httpcore", "urllib3", "groq", "openai"):
-        logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
 def _truncate(value: str, limit: int = 120) -> str:
