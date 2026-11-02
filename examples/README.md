@@ -6,6 +6,8 @@ Estas conversas são geradas pelo **agente real** (não são roteiros fixos) com
 make examples
 ```
 
+As conversas atuais foram geradas com `openai/gpt-oss-20b` porque o limite diário do plano gratuito do Groq para o modelo padrão `openai/gpt-oss-120b`) havia sido atingido durante a avaliação. Para regenerar com o modelo padrão: `python scripts/generate_examples.py`.
+
 Cada turno mostra a mensagem do cliente e a resposta da Lia. Os blocos
 "Ferramentas consultadas" revelam exatamente quais ferramentas o agente chamou
 e com quais argumentos — é assim que se vê que preços, estoque, promoções e
