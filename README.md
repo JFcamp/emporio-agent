@@ -282,6 +282,8 @@ As dependências seguem uma direção só: interfaces → agente → ferramentas
 
 - **Canal**: expor o agente numa API com webhook do WhatsApp, que é o canal real da loja.
 
+- **Falhas conhecidas da última avaliação.** Datas por extenso ("16 de fevereiro") não são interpretadas pelo código, só formatos numéricos; o caso de validação que expôs isso ficou sem correção para não ajustar o agente a partir do próprio conjunto de validação. Em outras três situações o modelo variou de forma inofensiva: deixou de citar o total de resultados de uma busca, chamou a avaliação de devolução com dados vazios antes de pedi-los (a verificação de identidade bloqueia a consulta) e pediu a data de recebimento antes de acionar a ferramenta.
+
 ## Uso de assistentes de IA
 
 Usei dois assistentes, com papéis separados:
