@@ -24,6 +24,22 @@ def test_brl_format_ok():
     assert not brl_format_ok("Custa R$ 1234,56")
 
 
+def test_brl_format_rejects_special_space_separator():
+    # Narrow NBSP entre R$ e o número não é o formato exigido (R$ 1.000 sem centavos).
+    assert not brl_format_ok("De R$\u202f549,00 por R$\u202f1.000")
+
+
+def test_percent_with_narrow_space_matches():
+    # "20 %" com narrow NBSP deve casar com a expectativa "20%".
+    reply = "Ohana CK-20 com 20\u202f% de desconto"
+    assert check_turn({"contains_all": ["20%"], "brl_format": False}, reply, [], FALLBACK) == []
+
+
+def test_brl_format_applied_by_default():
+    # Sem brl_format explícito, um valor mal formatado reprova.
+    assert check_turn({}, "custa R$429,90", [], FALLBACK)
+
+
 def test_normalize_reply_treats_rs_equal():
     assert normalize_reply("R$ 439,20") == normalize_reply("r$439,20")
 

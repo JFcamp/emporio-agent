@@ -12,11 +12,17 @@ from emporio.utils import normalize
 _BRL_RE = re.compile(r"R\$(\S)")
 _BRL_VALUE_RE = re.compile(r"R\$ \d{1,3}(\.\d{3})*,\d{2}")
 
+# Espaços especiais que modelos inserem (NBSP, narrow NBSP, thin space, etc.).
+_SPECIAL_SPACES = dict.fromkeys(map(ord, "\u00a0\u202f\u2009\u2007\u2060"), " ")
+
 
 def normalize_reply(text: str) -> str:
-    # normalize() já tira acentos, baixa caixa e colapsa espaços. Trata "r$ " e
-    # "r$" como equivalentes para as comparações de conteúdo.
-    return normalize(text).replace("r$ ", "r$")
+    # Trata espaços especiais como espaço comum, mantém "%", e faz "r$ " e "r$"
+    # equivalerem. Também cola o "%" ao número ("20 %" -> "20%") porque alguns
+    # modelos separam o percentual com espaço fino.
+    text = text.translate(_SPECIAL_SPACES)
+    result = normalize(text).replace("r$ ", "r$")
+    return re.sub(r"\s+%", "%", result)
 
 
 def subset_match(expected, actual) -> bool:
@@ -40,7 +46,10 @@ def subset_match(expected, actual) -> bool:
 
 
 def brl_format_ok(text: str) -> bool:
-    # Todo "R$" deve ser seguido de um espaço...
+    # Espaços especiais (NBSP, narrow NBSP) viram espaço comum: "R$<nbsp>1.000"
+    # não conta como formato válido só por ter "algum" separador.
+    text = text.translate(_SPECIAL_SPACES)
+    # Todo "R$" deve ser seguido de um espaço comum...
     if _BRL_RE.search(text):
         return False
     # ...e de um valor no formato 1.234,56.
