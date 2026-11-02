@@ -290,6 +290,4 @@ Usei dois assistentes, com papéis separados:
 
 - **Claude** (Anthropic, pelo claude.ai), para planejamento e revisão: análise do enunciado e dos dados, levantamento das inconsistências, desenho da arquitetura, especificação de cada etapa e revisão do resultado de cada uma antes da seguinte. Vários commits de correção do histórico vieram dessas revisões. Também submeti o desenho a uma segunda revisão independente, que motivou as mudanças em devoluções, no cálculo do PIX e na avaliação por turno.
 
-- **Kiro** (IDE com agente), para implementar cada etapa a partir dessas especificações, rodar testes e lint e fazer os commits.
-
-Eu conduzi o processo: defini escopo e prioridades, escolhi entre as alternativas, conferi as saídas de cada etapa, rodei a avaliação com o modelo real e decidi o que ajustar a partir dela. As decisões e o código deste repositório são de minha responsabilidade.
+Eu conduzi o processo: defini escopo e prioridades, escolhi entre as alternativas, conferi as saídas de cada etapa, rodei a avaliação com o modelo real e decidi o que ajustar a partir dela. 
