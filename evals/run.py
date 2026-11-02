@@ -255,6 +255,46 @@ def _is_rate_limit(result: dict) -> bool:
     return any(t.get("error") == "rate_limit" for t in result["turns"])
 
 
+def _src_last_commit_time() -> float:
+    # Timestamp (epoch) do último commit que alterou src/. Resultados anteriores
+    # a isso são de outra versão do agente e não entram no relatório.
+    import subprocess
+
+    try:
+        out = subprocess.run(
+            ["git", "log", "-1", "--format=%ct", "--", "src"],
+            cwd=Path(__file__).resolve().parents[1],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return float(out.stdout.strip() or 0)
+    except (subprocess.SubprocessError, OSError, ValueError):
+        return 0.0
+
+
+def consolidate_results(model: str, src_time: float | None = None) -> list[dict]:
+    """Junta o resultado mais recente de cada caso dos JSONs relevantes.
+
+    Considera só JSONs gerados depois do último commit em src/ e do MESMO modelo
+    da execução atual. Cada caso aparece uma vez, com a execução mais recente.
+    """
+    if src_time is None:
+        src_time = _src_last_commit_time()
+
+    files = sorted(RESULTS_DIR.glob("2*.json"), key=lambda p: p.stat().st_mtime)
+    latest_by_case: dict[str, dict] = {}
+    for path in files:
+        if path.stat().st_mtime < src_time:
+            continue
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if data.get("modelo") != model:
+            continue
+        for result in data["resultados"]:
+            latest_by_case[result["id"]] = result  # ordem crescente -> fica o mais novo
+    return list(latest_by_case.values())
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Roda os evals contra o agente real")
     parser.add_argument("-k", help="filtra por id (vários separados por vírgula)")
@@ -285,7 +325,11 @@ def main() -> None:
     markdown = _render_markdown(results, model)
     (RESULTS_DIR / "latest.md").write_text(markdown, encoding="utf-8")
     if args.publish:
-        (Path(__file__).parent / "REPORT.md").write_text(markdown, encoding="utf-8")
+        # O REPORT.md consolida o resultado mais recente de cada caso desde o
+        # último commit em src/, só do modelo atual — não só a execução de agora.
+        consolidated = consolidate_results(model)
+        report = _render_markdown(consolidated, model)
+        (Path(__file__).parent / "REPORT.md").write_text(report, encoding="utf-8")
 
     c = _counts(results)
     print(

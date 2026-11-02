@@ -109,6 +109,44 @@ def test_set_holdout_only(monkeypatch):
     assert all(r["holdout"] for r in results)
 
 
+def test_consolidate_results(monkeypatch, tmp_path):
+    import json
+    import os
+    import time
+
+    results_dir = tmp_path / "results"
+    results_dir.mkdir()
+    monkeypatch.setattr(runner, "RESULTS_DIR", results_dir)
+
+    base = time.time()
+
+    def _write(name, mtime, modelo, resultados):
+        path = results_dir / name
+        path.write_text(
+            json.dumps({"modelo": modelo, "resultados": resultados}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        os.utime(path, (mtime, mtime))
+
+    # Antes do commit em src/: deve ser ignorado mesmo sendo do modelo certo.
+    _write("20260101-000000.json", base - 100, "groq:m",
+           [{"id": "endereco", "status": "FAIL", "holdout": False, "turns": []}])
+    # Modelo diferente: ignorado.
+    _write("20260102-000000.json", base + 10, "groq:outro",
+           [{"id": "endereco", "status": "PASS", "holdout": False, "turns": []}])
+    # Execução antiga do modelo certo: endereco FAIL.
+    _write("20260103-000000.json", base + 20, "groq:m",
+           [{"id": "endereco", "status": "FAIL", "holdout": False, "turns": []},
+            {"id": "horario", "status": "PASS", "holdout": False, "turns": []}])
+    # Execução mais recente do modelo certo: endereco agora PASS.
+    _write("20260104-000000.json", base + 30, "groq:m",
+           [{"id": "endereco", "status": "PASS", "holdout": False, "turns": []}])
+
+    consolidated = runner.consolidate_results("groq:m", src_time=base)
+    by_id = {r["id"]: r["status"] for r in consolidated}
+    assert by_id == {"endereco": "PASS", "horario": "PASS"}  # 1 por caso, o mais novo
+
+
 def test_rerun_failed_skips_passed(monkeypatch, tmp_path):
     _only(monkeypatch, ["endereco", "horario_sabado"])
     # JSON anterior: endereco PASS, horario_sabado FAIL -> só horario roda.
