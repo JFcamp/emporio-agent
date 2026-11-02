@@ -143,6 +143,62 @@ def test_clean_text_removes_think():
     assert clean_text("<think>raciocínio</think>  Olá!") == "Olá!"
 
 
+def test_provider_failure_after_handoff_does_not_duplicate_protocol():
+    from emporio.agent.graph import build_graph
+    from emporio.config import get_settings
+
+    handoff_call = _tool_call_msg(
+        "encaminhar_atendente",
+        {"motivo": "reclamacao", "resumo": "entregador grosseiro"},
+        "h1",
+    )
+
+    # Turno 1: encaminha e, na chamada seguinte, o provedor falha.
+    fake1 = FakeChatModel(responses=[handoff_call], raise_after=1)
+    agent = EmporioAgent(llm=fake1, persist=False)
+    thread_id = agent.new_thread_id()
+    reply1 = agent.chat("quero reclamar do pedido 8", thread_id)
+    assert reply1.text == FALLBACK
+
+    path = get_settings().handoffs_file
+    lines_after_1 = [
+        line for line in path.read_text(encoding="utf-8").splitlines() if thread_id in line
+    ]
+    assert len(lines_after_1) == 1
+
+    # Turno 2 (mesma thread): encaminha de novo e depois responde normalmente.
+    handoff_call_2 = _tool_call_msg(
+        "encaminhar_atendente",
+        {"motivo": "reclamacao", "resumo": "entregador grosseiro"},
+        "h2",
+    )
+    fake2 = FakeChatModel(
+        responses=[handoff_call_2, AIMessage(content="Registrei, segue o protocolo.")]
+    )
+    agent._graph = build_graph(fake2, checkpointer=agent._checkpointer)
+
+    reply2 = agent.chat("e aí, conseguiu registrar?", thread_id)
+
+    # O protocolo do turno 2 é o mesmo e vem como já registrado.
+    handoff_result = next(
+        c.result for c in reply2.tool_calls if c.name == "encaminhar_atendente"
+    )
+    assert '"ja_registrado": true' in handoff_result
+
+    lines_after_2 = [
+        line for line in path.read_text(encoding="utf-8").splitlines() if thread_id in line
+    ]
+    assert len(lines_after_2) == 1  # não duplicou
+
+    # O histórico não guardou tool call órfã: a última chamada ao modelo no
+    # turno 2 não recebeu AIMessage com tool_calls sem ToolMessage de resposta.
+    last_seen = fake2.received_calls[-1]
+    answered = {m.tool_call_id for m in last_seen if isinstance(m, ToolMessage)}
+    for msg in last_seen:
+        if isinstance(msg, AIMessage) and msg.tool_calls:
+            assert all(call["id"] in answered for call in msg.tool_calls)
+
+
 def test_handoff_records_thread_id():
     script = [
         _tool_call_msg(

@@ -19,13 +19,20 @@ class FakeChatModel(BaseChatModel):
     received_calls: list[list[BaseMessage]]
     cursor: int
     raises: bool
+    raise_after: int | None
 
-    def __init__(self, responses: list[AIMessage] | None = None, raises: bool = False):
+    def __init__(
+        self,
+        responses: list[AIMessage] | None = None,
+        raises: bool = False,
+        raise_after: int | None = None,
+    ):
         super().__init__(
             responses=responses or [],
             received_calls=[],
             cursor=0,
             raises=raises,
+            raise_after=raise_after,
         )
 
     def _generate(
@@ -37,6 +44,9 @@ class FakeChatModel(BaseChatModel):
     ) -> ChatResult:
         self.received_calls.append(list(messages))
         if self.raises:
+            raise RuntimeError("falha simulada do modelo")
+        # raise_after=N: emite N respostas e levanta exceção na chamada N+1.
+        if self.raise_after is not None and self.cursor >= self.raise_after:
             raise RuntimeError("falha simulada do modelo")
         if self.cursor < len(self.responses):
             message = self.responses[self.cursor]
