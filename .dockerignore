@@ -1,0 +1,10 @@
+.venv
+.env
+.git
+data/processed
+data/runtime
+evals/results
+__pycache__
+.pytest_cache
+.ruff_cache
+.kiro
