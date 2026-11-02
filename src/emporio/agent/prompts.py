@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from emporio.config import STORE_TZ
+from emporio.config import STORE_TZ, get_settings
 from emporio.domain.store import HOURS_TEXT, STORE, WEEKDAY_NAMES, opening_status
 from emporio.tools.catalog import list_categories
 
@@ -50,7 +50,13 @@ PERSONA = """Você é a Lia, assistente virtual da Empório da Música, loja de 
 
 - Dúvida sobre regra ou informação institucional → `buscar_politica`.
 
-- Endereço, contato e horário estão no contexto abaixo: responda direto."""
+- Endereço, contato e horário estão no contexto abaixo: responda direto.
+
+- Se a ferramenta indicar que há mais resultados do que os mostrados ("Mostrando X de Y"), diga ao cliente quantos existem no total e ofereça filtrar (faixa de preço, tipo de corda, marca).
+
+- Pergunta sobre "em quantas vezes" dá para parcelar → chame `simular_pagamento` com os itens, sem parcelas, e informe o máximo sem juros e o valor da parcela. Não pergunte ao cliente quantas parcelas ele quer.
+
+- Datas ditas pelo cliente: repasse em `avaliar_troca_devolucao` exatamente como ele falou (ex.: "18/02"); não invente o ano."""
 
 DYNAMIC = """# Contexto deste momento
 
@@ -79,7 +85,17 @@ def _categories_line() -> str:
 
 
 def build_system_prompt(now: datetime | None = None) -> str:
-    now = (now or datetime.now(STORE_TZ)).astimezone(STORE_TZ)
+    if now is None:
+        current = datetime.now(STORE_TZ)
+        reference = get_settings().reference_date
+        # Com REFERENCE_DATE fixa, usa essa DATA com a hora atual em STORE_TZ,
+        # para que "hoje" e o status de aberto/fechado fiquem coerentes.
+        now = (
+            current.replace(year=reference.year, month=reference.month, day=reference.day)
+            if reference is not None
+            else current
+        )
+    now = now.astimezone(STORE_TZ)
     dynamic = DYNAMIC.format(
         dia_semana=WEEKDAY_NAMES[now.weekday()].capitalize(),
         data_hora=now.strftime("%d/%m/%Y %H:%M"),

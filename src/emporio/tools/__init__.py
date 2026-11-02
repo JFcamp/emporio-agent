@@ -146,7 +146,8 @@ def avaliar_troca_devolucao(
         numero_pedido: Número do pedido informado pelo cliente.
         email_ou_telefone: E-mail ou telefone com DDD usado na compra.
         motivo: Motivo da solicitação: arrependimento, defeito ou preferencia.
-        data_recebimento: Data em que o cliente recebeu o produto (AAAA-MM-DD).
+        data_recebimento: Data em que o cliente disse ter recebido, como ele
+            falou (ex.: 18/02 ou 18/02/2026). O sistema completa o ano.
         compra_online: Verdadeiro se a compra foi online; falso se na loja física.
         item_personalizado_ou_venda_final: Verdadeiro se o item teve
             personalização/ajuste sob encomenda ou foi de liquidação "venda final".

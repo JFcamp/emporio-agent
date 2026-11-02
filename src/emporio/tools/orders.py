@@ -16,6 +16,50 @@ from emporio.data.db import connect
 from emporio.domain import returns
 from emporio.utils import brl, normalize, normalize_phone
 
+_ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_BR_RE = re.compile(r"^(\d{1,2})/(\d{1,2})(?:/(\d{2}|\d{4}))?$")
+
+
+def parse_br_date(text: str, today: date) -> date | None:
+    """Interpreta a data dita pelo cliente, completando o ano quando faltar.
+
+    Aceita DD/MM, DD/MM/AAAA, DD/MM/AA e AAAA-MM-DD. Sem ano, usa o ano de
+    today; se isso cair depois de today, usa o ano anterior. Data inexistente
+    ou formato desconhecido retorna None.
+    """
+    text = text.strip()
+    if _ISO_RE.match(text):
+        try:
+            return date.fromisoformat(text)
+        except ValueError:
+            return None
+
+    match = _BR_RE.match(text)
+    if not match:
+        return None
+
+    day, month, year_part = match.groups()
+    day, month = int(day), int(month)
+    if year_part is None:
+        try:
+            candidate = date(today.year, month, day)
+        except ValueError:
+            return None
+        if candidate > today:
+            try:
+                candidate = date(today.year - 1, month, day)
+            except ValueError:
+                return None
+        return candidate
+
+    year = int(year_part)
+    if year < 100:
+        year += 2000
+    try:
+        return date(year, month, day)
+    except ValueError:
+        return None
+
 STATUS = {
     "pending": (
         "Aguardando confirmação do pagamento",
@@ -41,9 +85,6 @@ NOT_VERIFIED = {
         "na compra."
     ),
 }
-
-_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-
 
 def payment_label(code: str | None) -> str | None:
     if code is None:
@@ -144,26 +185,19 @@ def evaluate_return(
         if row is None:
             return dict(NOT_VERIFIED)
 
-        parsed_received: date | None = None
-        if received_date is not None:
-            # A regex garante o formato; fromisoformat ainda rejeita datas
-            # inexistentes (ex.: 2026-02-30), que não podem quebrar a ferramenta.
-            if not _DATE_RE.match(received_date):
-                return {
-                    "verificado": True,
-                    "erro": "data_recebimento deve estar no formato AAAA-MM-DD.",
-                }
-            try:
-                parsed_received = date.fromisoformat(received_date)
-            except ValueError:
-                return {
-                    "verificado": True,
-                    "erro": "data_recebimento deve estar no formato AAAA-MM-DD.",
-                }
-
         settings = get_settings()
         today = settings.today()
         order_date = date.fromisoformat(row["order_date"])
+
+        # O código interpreta a data dita pelo cliente (completando o ano).
+        parsed_received: date | None = None
+        if received_date is not None:
+            parsed_received = parse_br_date(received_date, today)
+            if parsed_received is None:
+                return {
+                    "verificado": True,
+                    "erro": "Não entendi a data de recebimento. Peça no formato DD/MM/AAAA.",
+                }
 
         evaluation = returns.evaluate(
             reason=reason,
@@ -183,6 +217,8 @@ def evaluate_return(
             "data_referencia": today.isoformat(),
             **evaluation,
         }
+        if parsed_received is not None:
+            result["data_recebimento_considerada"] = parsed_received.isoformat()
 
         if row["estimated_delivery"] and received_date is None:
             result["previsao_de_entrega_registrada"] = row["estimated_delivery"]

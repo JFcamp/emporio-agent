@@ -143,6 +143,15 @@ def test_clean_text_removes_think():
     assert clean_text("<think>raciocínio</think>  Olá!") == "Olá!"
 
 
+def test_format_currency():
+    from emporio.agent.graph import format_currency
+
+    assert format_currency("R$429,90") == "R$ 429,90"
+    assert format_currency("R$  1.000,00") == "R$ 1.000,00"
+    assert format_currency("R$ 549,00") == "R$ 549,00"
+    assert format_currency("sem dinheiro aqui") == "sem dinheiro aqui"
+
+
 def test_provider_failure_after_handoff_does_not_duplicate_protocol():
     from emporio.agent.graph import build_graph
     from emporio.config import get_settings
@@ -234,6 +243,16 @@ def test_system_prompt_sunday_closed():
     prompt = build_system_prompt(sunday)
     assert "FECHADA" in prompt
     assert "amanhã às 09:00" in prompt
+
+
+def test_system_prompt_uses_reference_date(monkeypatch):
+    from datetime import date as _date
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "reference_date", _date(2026, 3, 8))  # domingo
+    prompt = build_system_prompt()  # sem now explícito -> usa reference_date
+    assert "Domingo" in prompt
+    assert "08/03/2026" in prompt
 
 
 def test_build_llm_groq_without_key_raises():

@@ -79,9 +79,19 @@ def test_evaluate_return_eligible(reference_date_feb20):
     assert result["resultado"] == "elegivel"
 
 
-def test_evaluate_return_bad_date_format(reference_date_feb20):
+def test_evaluate_return_accepts_br_date_with_year(reference_date_feb20):
+    # "18/02/2026" agora é interpretado pelo código, não é mais erro.
+    result = evaluate_return(
+        7, "leticia.rocha@jmail.com", "arrependimento",
+        received_date="18/02/2026", online_purchase=True, special_item=False,
+    )
+    assert result["resultado"] == "elegivel"
+    assert result["data_recebimento_considerada"] == "2026-02-18"
+
+
+def test_evaluate_return_unparseable_date(reference_date_feb20):
     result = evaluate_return(7, "leticia.rocha@jmail.com", "arrependimento",
-                             received_date="18/02/2026")
+                             received_date="ontem")
     assert result["verificado"] is True
     assert "erro" in result
 
@@ -96,6 +106,18 @@ def test_evaluate_return_nonexistent_date(reference_date_feb20):
 def test_evaluate_return_wrong_contact():
     result = evaluate_return(7, "errado@jmail.com", "arrependimento")
     assert result == NOT_VERIFIED
+
+
+def test_parse_br_date():
+    from emporio.tools.orders import parse_br_date
+
+    today = date(2026, 3, 10)
+    assert parse_br_date("18/02", today) == date(2026, 2, 18)
+    assert parse_br_date("20/12", today) == date(2025, 12, 20)  # futuro -> ano anterior
+    assert parse_br_date("18/02/26", today) == date(2026, 2, 18)
+    assert parse_br_date("2026-02-18", today) == date(2026, 2, 18)
+    assert parse_br_date("31/02/2026", today) is None
+    assert parse_br_date("ontem", today) is None
 
 
 def get_settings_connection():

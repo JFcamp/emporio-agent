@@ -127,8 +127,14 @@ class Reply:
     tool_calls: list[ToolCall]
 
 
+def format_currency(text: str) -> str:
+    # Garante um único espaço entre "R$" e o número (o modelo às vezes cola ou
+    # usa espaço especial). Não altera o valor em si.
+    return re.sub(r"R\$\s*(\d)", r"R$ \1", text)
+
+
 def clean_text(text: str) -> str:
-    return _THINK_RE.sub("", text).strip()
+    return format_currency(_THINK_RE.sub("", text).strip())
 
 
 def _text_from(message: AIMessage) -> str:
