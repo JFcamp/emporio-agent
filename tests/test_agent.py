@@ -90,6 +90,45 @@ def test_drop_orphan_tool_calls():
     assert human in cleaned
 
 
+def test_drop_orphan_removes_partial_tool_response():
+    # AIMessage com 2 tool_calls mas só 1 ToolMessage: ambos saem.
+    ai = AIMessage(
+        content="",
+        tool_calls=[
+            {"name": "buscar_politica", "args": {"pergunta": "a"}, "id": "a"},
+            {"name": "buscar_politica", "args": {"pergunta": "b"}, "id": "b"},
+        ],
+    )
+    partial_tool = ToolMessage(content="{}", tool_call_id="a")
+    human = HumanMessage(content="oi")
+
+    cleaned = drop_orphan_tool_calls([human, ai, partial_tool])
+    assert ai not in cleaned
+    assert partial_tool not in cleaned
+    assert human in cleaned
+
+
+def test_trim_keeps_human_of_current_turn():
+    from langgraph.checkpoint.memory import InMemorySaver
+
+    from emporio.agent.graph import build_graph
+
+    # Turno: Human + AI(tool) + Tool + AI(tool) + Tool + AI(texto).
+    responses = [
+        _tool_call_msg("buscar_politica", {"pergunta": "frete"}, "t1"),
+        _tool_call_msg("buscar_politica", {"pergunta": "troca"}, "t2"),
+        AIMessage(content="Pronto!"),
+    ]
+    fake = FakeChatModel(responses=responses)
+    graph = build_graph(fake, checkpointer=InMemorySaver(), max_history=3)
+    config = {"configurable": {"thread_id": "t-human"}, "recursion_limit": 16}
+    graph.invoke({"messages": [("user", "me explica frete e troca")]}, config)
+
+    last_seen = fake.received_calls[-1]
+    humans = [m for m in last_seen if isinstance(m, HumanMessage)]
+    assert any("frete e troca" in m.content for m in humans)
+
+
 def test_model_exception_returns_fallback(caplog):
     agent = EmporioAgent(llm=FakeChatModel(raises=True), persist=False)
     with caplog.at_level(logging.ERROR):

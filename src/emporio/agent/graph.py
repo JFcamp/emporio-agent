@@ -23,6 +23,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import (
     AIMessage,
     BaseMessage,
+    HumanMessage,
     SystemMessage,
     ToolMessage,
     trim_messages,
@@ -49,26 +50,37 @@ _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
 
 def drop_orphan_tool_calls(messages: list[BaseMessage]) -> list[BaseMessage]:
     # Evita que uma interrupção (ex.: limite de passos) deixe o histórico
-    # inválido e o provedor recuse o turno seguinte: remove AIMessages cujos
-    # tool_calls não têm ToolMessage correspondente e ToolMessages sem origem.
+    # inválido e o provedor recuse o turno seguinte.
     answered_ids = {
         msg.tool_call_id for msg in messages if isinstance(msg, ToolMessage)
     }
-    ai_call_ids: set[str] = set()
-    for msg in messages:
-        if isinstance(msg, AIMessage) and msg.tool_calls:
-            ai_call_ids.update(call["id"] for call in msg.tool_calls)
 
-    cleaned: list[BaseMessage] = []
+    # Passo 1: decide quais AIMessages ficam. Uma AIMessage com tool_calls só
+    # fica se TODOS os seus tool_calls tiverem ToolMessage de resposta.
+    kept: list[BaseMessage] = []
+    valid_tool_ids: set[str] = set()
     for msg in messages:
         if isinstance(msg, AIMessage) and msg.tool_calls:
-            missing = [c for c in msg.tool_calls if c["id"] not in answered_ids]
-            if missing:
-                continue
-        if isinstance(msg, ToolMessage) and msg.tool_call_id not in ai_call_ids:
+            if all(call["id"] in answered_ids for call in msg.tool_calls):
+                kept.append(msg)
+                valid_tool_ids.update(call["id"] for call in msg.tool_calls)
+            continue
+        kept.append(msg)
+
+    # Passo 2: ToolMessages só ficam se pertencerem a uma AIMessage mantida.
+    cleaned: list[BaseMessage] = []
+    for msg in kept:
+        if isinstance(msg, ToolMessage) and msg.tool_call_id not in valid_tool_ids:
             continue
         cleaned.append(msg)
     return cleaned
+
+
+def _from_last_human(messages: list[BaseMessage]) -> list[BaseMessage]:
+    for index in range(len(messages) - 1, -1, -1):
+        if isinstance(messages[index], HumanMessage):
+            return messages[index:]
+    return messages
 
 
 def build_graph(llm: BaseChatModel, checkpointer=None, max_history: int | None = None):
@@ -77,7 +89,7 @@ def build_graph(llm: BaseChatModel, checkpointer=None, max_history: int | None =
 
     def agent_node(state: MessagesState) -> dict:
         history = drop_orphan_tool_calls(state["messages"])
-        history = trim_messages(
+        trimmed = trim_messages(
             history,
             strategy="last",
             token_counter=len,
@@ -85,7 +97,12 @@ def build_graph(llm: BaseChatModel, checkpointer=None, max_history: int | None =
             start_on="human",
             include_system=False,
         )
-        response = model.invoke([SystemMessage(build_system_prompt()), *history])
+        # Um único turno com muitas chamadas de ferramenta não pode fazer o
+        # modelo perder a pergunta do cliente: se o corte removeu toda
+        # HumanMessage, recomeça a partir da última pergunta do histórico limpo.
+        if not any(isinstance(m, HumanMessage) for m in trimmed):
+            trimmed = _from_last_human(history)
+        response = model.invoke([SystemMessage(build_system_prompt()), *trimmed])
         return {"messages": [response]}
 
     graph = StateGraph(MessagesState)
